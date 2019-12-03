@@ -11,12 +11,11 @@ public:
 
     tcp::socket& socket();
 
-    void start(server_params* params);
+    void start();
 
 private:
     tcp::socket socket_;
     std::string message_;
-    server_params* params_;
 
     explicit tcp_connection(aio::io_context& io_context);
 

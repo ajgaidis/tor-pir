@@ -3,8 +3,10 @@
 
 namespace po = boost::program_options;
 
-server_params params;
+Params params;
+PirParams pir_params;
 uint is_pir;
+
 
 int main(int argc, char **argv) {
 
@@ -57,45 +59,110 @@ int main(int argc, char **argv) {
 
     // TODO: error catch the size and num items in the db
 
-    std::cout << "... Setting up database" << std::endl;
+    std::cout << "[i] Setting up database" << std::endl;
     std::cout << "    [i] Database contains " << params.num_items << " elements" << std::endl;
     std::cout << "    [i] Database elements are " << params.item_size << " bytes" << std::endl;
 
-    std::vector<uint8_t> db;
-    db.resize(params.num_items * params.item_size);
-    std::random_device rd;
-    for (uint64_t i = 0; i < params.num_items; i++) {
-        for (uint64_t j = 0; j < params.item_size; j++) {
+    if (is_pir) {
 
-            // Generate random junk in byte-size pieces to fill database
-            uint8_t value;
-            value = (uint8_t)(rd() % 256);
-            db[i * params.item_size + j] = value;
+        uint32_t N = 2048;
+        uint32_t logt = 12;
+        uint32_t d = 5;
+        seal::EncryptionParameters enc_params(seal::scheme_type::BFV);
+        gen_params(params.num_items, params.item_size, N, logt, d, enc_params, pir_params);
 
-        }
+        cout << "done" << endl;
+
+//        // Create test database
+//        auto db(std::make_unique<uint8_t[]>(params.num_items * params.item_size));
+//
+//        std::random_device rd;
+//        for (uint64_t i = 0; i < params.num_items; i++) {
+//            for (uint64_t j = 0; j < params.item_size; j++) {
+//                auto val = rd() % 256;
+//                db.get()[(i * params.item_size) + j] = val;
+//            }
+//        }
+//
+//        // Initialize PIR Server
+//        std::cout << "Initializing server and client" << std::endl;
+//        PIRServer pir_server(enc_params, pir_params);
+//
+//        // Initialize PIR client....
+//        PIRClient pir_client(enc_params, pir_params);
+//        seal::GaloisKeys galois_keys = pir_client.generate_galois_keys();
+//
+//        // Set galois key
+//        cout << "Main: Setting Galois keys...";
+//        pir_server.set_galois_key(0, galois_keys);
+//
+//        cout << "done" << endl;
+//
+//        pir_server.set_database(move(db), params.num_items, params.item_size);
+//        pir_server.preprocess_database();
+//        cout << "database pre processed " << endl;
+//
+//        // Choose an index of an element in the DB
+//        uint64_t ele_index = rd() % params.num_items; // element in DB at random position
+//        //uint64_t ele_index = 35;
+//        cout << "Main: element index = " << ele_index << " from [0, " << params.num_items -1 << "]" << endl;
+//        uint64_t index = pir_client.get_fv_index(ele_index, params.item_size);   // index of FV plaintext
+//        uint64_t offset = pir_client.get_fv_offset(ele_index, params.item_size); // offset in FV plaintext
+//        // Measure query generation
+//        cout << "Main: FV index = " << index << ", FV offset = " << offset << endl;
+//
+//        PirQuery query = pir_client.generate_query(index);
+//        cout << "Main: query generated" << endl;
+//
+//        PirReply reply = pir_server.generate_reply(query, 0);
+//
+//        seal::Plaintext result = pir_client.decode_reply(reply);
+//
+//        vector<uint8_t> elems(N * logt / 8);
+//        coeffs_to_bytes(logt, result, elems.data(), (N * logt) / 8);
+//
+//        cout << "done" << endl;
+
     }
-    params.db_ptr = &db;
-
-    std::cout << "    [i] Database populated with "
-                << params.num_items * params.item_size << " total bytes" << std::endl;
-    std::cout << "[+] Database created successfully" << std::endl;
-    std::cout << "[+] Server is now listening on port " << params.port << std::endl;
+//    } else {  // default server configuration
+//
+//        std::vector<uint8_t> db;
+//        db.resize(params.num_items * params.item_size);
+//        std::random_device rd;
+//        for (uint64_t i = 0; i < params.num_items; i++) {
+//            for (uint64_t j = 0; j < params.item_size; j++) {
+//
+//                // Generate random junk in byte-size pieces to fill database
+//                uint8_t value;
+//                value = (uint8_t) (rd() % 256);
+//                db[i * params.item_size + j] = value;
+//
+//            }
+//        }
+//        params.db_ptr = &db;
+//
+//        std::cout << "    [i] Database populated with "
+//                  << params.num_items * params.item_size << " total bytes" << std::endl;
+//        std::cout << "[i] Database created successfully" << std::endl;
+//        std::cout << "[i] Server is now listening on port " << params.port << std::endl;
+//
+//    }
 
     /*
      * Running the server
      */
-    try {
-
-        // Server object will accept incoming client connections
-        aio::io_context io_context;
-        tcp_server server(io_context, &params);
-
-        // run() will allow us to do things asynchronously
-        io_context.run();
-
-    } catch (std::exception& err) {
-        std::cerr << err.what() << std::endl;
-    }
+//    try {
+//
+//        // Server object will accept incoming client connections
+//        aio::io_context io_context;
+//        tcp_server server(io_context);
+//
+//        // run() will allow us to do things asynchronously
+//        io_context.run();
+//
+//    } catch (std::exception& err) {
+//        std::cerr << err.what() << std::endl;
+//    }
 
     return 0;
 }

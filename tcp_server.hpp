@@ -6,12 +6,11 @@
 
 class tcp_server {
 public:
-    explicit tcp_server(aio::io_context &io_context, server_params* params);
+    explicit tcp_server(aio::io_context &io_context);
 
 private:
     aio::io_context& io_context_;
     tcp::acceptor acceptor_;
-    server_params* params_;
 
     void accept_new();
     void handle_accept(
