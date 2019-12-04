@@ -25,7 +25,7 @@ add_executable(server
 add_library(libserver STATIC
         tcp_server.cpp
         tcp_connection.cpp
-        )
+        plain_server.cpp)
 target_link_libraries(server libserver)
 
 # Add boost libraries
