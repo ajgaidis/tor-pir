@@ -4,6 +4,8 @@
  * https://github.com/microsoft/SealPIR
  *
  * - Alex
+ *
+ * Edited by Alex to accommodate TCPServer base class and a an additional method (gen_database()).
  */
 
 #pragma once
@@ -13,10 +15,13 @@
 #include <memory>
 #include <vector>
 #include "pir_client.hpp"
+#include "tcp_server.hpp"
 
-class PIRServer {
+class PIRServer : public TCPServer {
   public:
-    PIRServer(const seal::EncryptionParameters &params, const PirParams &pir_params);
+    PIRServer(aio::io_context& io_context, const seal::EncryptionParameters &params, const PirParams &pir_params);
+
+    void gen_database();
 
     // NOTE: server takes over ownership of db and frees it when it exits.
     // Caller cannot free db

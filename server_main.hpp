@@ -10,8 +10,8 @@
 #include <random>
 #include <memory>
 #include <chrono>
-#include "seal/seal.h"
-#include "pir_server.hpp"
+//#include "seal/seal.h"
+//#include "pir_server.hpp"
 
 namespace aio = boost::asio;
 using boost::asio::ip::tcp;
@@ -28,27 +28,11 @@ struct ServerConfig {
     std::uint64_t ele_size;    // size (in bytes) of a given element in the database
 };
 extern ServerConfig server_config;
-
-
-class PlainServer {
-public:
-    explicit PlainServer(ServerConfig &server_configs);
-
-    PlainReply generate_reply(PlainQuery query);
-
-    // NOTE: server takes over ownership of db and frees it when it exits.
-    // Caller cannot free db
-    void set_database(std::unique_ptr<std::vector<uint8_t>> &&db);
-
-private:
-    std::unique_ptr<PlainDatabase> db_;
-    ServerConfig server_config_;
-};
-
+extern std::string delimiter;
 
 #define DEFAULT_SETUP (Plain)
 #define DEFAULT_PORT (8080)
-#define DEFAULT_ELE_NUM (2048)
-#define DEFAULT_ELE_SIZE (128)  // Measured in bytes
+#define DEFAULT_ELE_NUM (1 << 12)
+#define DEFAULT_ELE_SIZE (288)  // Measured in bytes
 
 #endif //TOR_PIR_SERVER_HPP

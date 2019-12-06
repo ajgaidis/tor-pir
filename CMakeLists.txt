@@ -16,9 +16,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 ## Enable for verbosity when building
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
-# The main executable
+# The main server executable
 add_executable(server
         server_main.cpp
+        )
+# The main client executable
+add_executable(client
+        client_main.cpp
         )
 
 # Link the custom server libraries we created
@@ -35,6 +39,7 @@ set(Boost_USE_STATIC_RUNTIME    OFF)
 find_package(Boost 1.71.0 COMPONENTS system filesystem program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(server ${Boost_LIBRARIES})
+target_link_libraries(client ${Boost_LIBRARIES})
 
 # Link the SealPIR files
 add_library(sealpir STATIC
@@ -43,7 +48,9 @@ add_library(sealpir STATIC
         pir_server.cpp
 )
 target_link_libraries(server sealpir)
+target_link_libraries(client sealpir)
 
 # Link SEAL
 find_package(SEAL 3.2.0 EXACT REQUIRED)
 target_link_libraries(server SEAL::seal)
+target_link_libraries(client SEAL::seal)

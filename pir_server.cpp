@@ -4,6 +4,8 @@
  * https://github.com/microsoft/SealPIR
  *
  * - Alex
+ *
+ * Edited by Alex to accommodate TCPServer base class and a an additional method (gen_database()).
  */
 
 #include "pir_server.hpp"
@@ -13,10 +15,11 @@ using namespace std;
 using namespace seal;
 using namespace seal::util;
 
-PIRServer::PIRServer(const EncryptionParameters &params, const PirParams &pir_params) :
+PIRServer::PIRServer(aio::io_context& io_context, const EncryptionParameters &params, const PirParams &pir_params) :
     params_(params), 
     pir_params_(pir_params),
-    is_db_preprocessed_(false)
+    is_db_preprocessed_(false),
+    TCPServer(io_context, std::variant<PlainServer*, PIRServer*>(this))
 {
     auto context = SEALContext::Create(params, false);
     evaluator_ = make_unique<Evaluator>(context);
@@ -32,6 +35,20 @@ void PIRServer::preprocess_database() {
 
         is_db_preprocessed_ = true;
     }
+}
+
+void PIRServer::gen_database() {
+    auto db(std::make_unique<uint8_t[]>(server_config.ele_num * server_config.ele_size));
+    std::random_device rd;
+    for (uint64_t i = 0; i < server_config.ele_num; i++) {
+        for (uint64_t j = 0; j < server_config.ele_size; j++) {
+            auto val = rd() % 256;
+            db.get()[(i * server_config.ele_size) + j] = val;
+        }
+    }
+
+    set_database(move(db), server_config.ele_num, server_config.ele_size);
+    preprocess_database();
 }
 
 // Server takes over ownership of db and will free it when it exits
