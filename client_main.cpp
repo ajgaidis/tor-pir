@@ -47,12 +47,20 @@ int main(int argc, char **argv) {
             PIRClient client(params, pir_params);
             seal::GaloisKeys galois_keys = client.generate_galois_keys();
 
-            // TODO: the galois keys need to be sent to the server -- or just make them on the server side :)
+            cout << "Sending Galois Keys to Server" << endl;
+            std::string serialized_galkeys = serialize_galoiskeys(galois_keys);
+            serialized_galkeys.append(delimiter); // Append the delimiter to know when all the keys have been read into the buffer
+            socket.write_some(aio::buffer(serialized_galkeys, serialized_galkeys.size()));
+//            boost::array<char, 42> buf{};
+//            aio::read(socket, aio::buffer(buf, 42));
+//            std::cout << buf.data() << std::endl;
+
+            sleep(3);
 
             auto time_before_pir = std::chrono::high_resolution_clock::now();
             // Generate the query
             cout << "Generating the query" << endl;
-            uint64_t ele_index = 5;
+            uint64_t ele_index = 25;
             uint64_t index = client.get_fv_index(ele_index, size_per_item);   // index of FV plaintext
             uint64_t offset = client.get_fv_offset(ele_index, size_per_item); // offset in FV plaintext
             PirQuery q = client.generate_query(index);
@@ -64,16 +72,15 @@ int main(int argc, char **argv) {
             cout << "Writing the query out to the server" << endl;
             socket.write_some(aio::buffer(serialized_query, serialized_query.size()));
             boost::array<char, 32841> pir_buf{};
-            boost::system::error_code pir_err;
 
             cout << "Receiving response from the server" << endl;
             size_t len = aio::read(socket, aio::buffer(pir_buf, 32841));
-//            cout << "Response is:" << endl;
-//            std::cout.write(pir_buf.data(), len);
-            //size_t len = socket.read_some(aio::buffer(pir_buf), pir_err);
             cout << "Deserializing response" << endl;
 
-            string reply_str = string((const char *)pir_buf.data(), pir_buf.size());
+            //string reply_str = string((const char *)pir_buf.data(), 32841); // n will probably be CIPHER_SIZE * count
+            std::string reply_str(pir_buf.begin(), pir_buf.end());
+            cout << "Turned into string of size: " << reply_str.length() << endl;
+//            cout << reply_str << endl;
             PirReply reply = deserialize_ciphertexts(1, reply_str, CIPHER_SIZE); // check the size of the ciphertext
             cout << "Decoding reply" << endl;
             seal::Plaintext result = client.decode_reply(reply);
@@ -81,6 +88,12 @@ int main(int argc, char **argv) {
             cout << "Converting the response to bytes" << endl;
             vector<uint8_t> elems(N * logt / 8);
             coeffs_to_bytes(logt, result, elems.data(), (N * logt) / 8);
+//
+//            char buffer [1];
+//            for (uint8_t i : elems) {
+//                sprintf(buffer, "%02X", i);
+//                std::cout << buffer << std::endl;
+//            }
 
             auto time_after_pir = std::chrono::high_resolution_clock::now();
             auto time_difference_pir = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -104,8 +117,6 @@ int main(int argc, char **argv) {
             auto time_difference_plain = std::chrono::duration_cast<std::chrono::microseconds>(
                     time_after_plain - time_before_plain).count();
             std::cout << "Server response time: " << time_difference_plain << " micoseconds" << std::endl;
-
-//        std::cout.write(buf.data(), len);
 
         }
 

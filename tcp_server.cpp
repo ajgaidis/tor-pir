@@ -52,6 +52,8 @@ tcp::socket& TCPServer::TCPConnection::socket() {
 
 void TCPServer::TCPConnection::start() {
 
+    static bool galkey_set = false;
+
     if (server_config.setup == Plain) {
         aio::async_read_until(socket_,
                               aio::dynamic_buffer(message_), "\n",
@@ -59,13 +61,20 @@ void TCPServer::TCPConnection::start() {
                                           shared_from_this(),
                                           aio::placeholders::error,
                                           aio::placeholders::bytes_transferred));
-    } else if (server_config.setup == PIR) {
-//        aio::async_read(socket_,
-//                aio::dynamic_buffer(message_),
-//                boost::bind(&TCPConnection::handle_read_pir,
-//                        shared_from_this(),
-//                        aio::placeholders::error,
-//                        aio::placeholders::bytes_transferred));
+    } else if (!galkey_set) {
+//    } else if (server_config.setup == PIR) {
+        // We start with a galois key exchange handshake. Nothing fancy or secure, just direct
+        // transmission to get the server synced to the client. After the `handle_read_galkeys`
+        // handler is exited control is switched to the main alternation between
+        // `handle_write_pir` and `handle_read_pir`.
+        galkey_set = true;
+        aio::async_read_until(socket_,
+                              aio::dynamic_buffer(message_), delimiter,
+                              boost::bind(&TCPConnection::handle_read_galkeys,
+                                          shared_from_this(),
+                                          aio::placeholders::error,
+                                          aio::placeholders::bytes_transferred));
+    } else {
         aio::async_read_until(socket_,
                               aio::dynamic_buffer(message_), delimiter,
                               boost::bind(&TCPConnection::handle_read_pir,
@@ -80,7 +89,6 @@ void TCPServer::TCPConnection::handle_read_echo(const boost::system::error_code&
     // TODO: error check and guard the user input
 
     if (!err) {
-        // async_write handles serializing the data for the socket
         aio::async_write(socket_,
                          aio::buffer(message_),
                          boost::bind(&TCPConnection::handle_write_echo,
@@ -130,7 +138,6 @@ void TCPServer::TCPConnection::handle_read_plain(const boost::system::error_code
     std::cout << "Time to generate reply: " << time_difference << " micoseconds" << std::endl;
 
     if (!err) {
-        // async_write handles serializing the data for the socket
         aio::async_write(socket_,
                          aio::buffer(reply),
                          boost::bind(&TCPConnection::handle_write_plain,
@@ -159,8 +166,52 @@ void TCPServer::TCPConnection::handle_write_plain(const boost::system::error_cod
 
 }
 
+void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_code& err, size_t bytes_transferred) {
+
+    std::cout << "Inside Galkeys. Bytes transferred: " << bytes_transferred << std::endl;
+
+    std::cout << "Reading client's galois keys" << std::endl;
+    auto pir_ptr = std::get_if<PIRServer*>(&server_);
+    std::cout << "Erasing delimiter" << std::endl;
+    message_.erase(message_.length() - delimiter.size(), delimiter.size());
+    std::cout << "Deserializing galkeys" << std::endl;
+    seal::GaloisKeys* galkeys = deserialize_galoiskeys(message_);
+    std::cout << "Setting galkeys" << std::endl;
+    (*pir_ptr)->set_galois_key(0, *galkeys);
+
+    std::cout << "Done." << std::endl;
+
+    message_.clear();
+    start();
+
+
+//    if (!err) {
+//        aio::async_write(socket_,
+//                         aio::buffer("[SERVER] Galois keys received successfully"),
+//                         boost::bind(&TCPConnection::handle_write_pir,
+//                                     shared_from_this(),
+//                                     aio::placeholders::error,
+//                                     aio::placeholders::bytes_transferred));
+//
+//        message_.clear();
+//
+//        aio::async_read_until(socket_,
+//                              aio::dynamic_buffer(message_), delimiter,
+//                              boost::bind(&TCPConnection::handle_write_pir,
+//                                          shared_from_this(),
+//                                          aio::placeholders::error,
+//                                          aio::placeholders::bytes_transferred));
+//        message_.clear();
+//    } else {
+//        delete this;
+//    }
+}
+
 void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& err, size_t bytes_transferred) {
 
+    if (bytes_transferred == 0) {
+        exit(0);
+    }
     std::cout << bytes_transferred << std::endl;
 
     std::cout << "-> Handling PIR read" << std::endl;
@@ -180,7 +231,6 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
     std::cout << "-> Serialized reply length: " << serialized_reply.length() << std::endl;
 
     if (!err) {
-        // async_write handles serializing the data for the socket
         aio::async_write(socket_,
                          aio::buffer(serialized_reply),
                          boost::bind(&TCPConnection::handle_write_pir,
@@ -190,25 +240,19 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
 
         message_.clear();
     } else {
-        std::cout << "DELETING" << std::endl;
         delete this;
     }
 }
 
 void TCPServer::TCPConnection::handle_write_pir(const boost::system::error_code& err, size_t) {
-    if (!err) {
-        aio::async_read(socket_, aio::dynamic_buffer(message_),
-                boost::bind(&TCPConnection::handle_read_pir,
-                        shared_from_this(),
-                        aio::placeholders::error,
-                        aio::placeholders::bytes_transferred));
 
-//        aio::async_read_until(socket_,
-//                              aio::dynamic_buffer(message_),"\n",
-//                              boost::bind(&TCPConnection::handle_read_pir,
-//                                          shared_from_this(),
-//                                          aio::placeholders::error,
-//                                          aio::placeholders::bytes_transferred));
+    if (!err) {
+        aio::async_read_until(socket_,
+                              aio::dynamic_buffer(message_), delimiter,
+                              boost::bind(&TCPConnection::handle_read_pir,
+                                          shared_from_this(),
+                                          aio::placeholders::error,
+                                          aio::placeholders::bytes_transferred));
     } else {
         delete this;
     }

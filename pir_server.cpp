@@ -43,7 +43,7 @@ void PIRServer::gen_database() {
     for (uint64_t i = 0; i < server_config.ele_num; i++) {
         for (uint64_t j = 0; j < server_config.ele_size; j++) {
             auto val = rd() % 256;
-            db.get()[(i * server_config.ele_size) + j] = val;
+            db.get()[(i * server_config.ele_size) + j] = '\x58';
         }
     }
 

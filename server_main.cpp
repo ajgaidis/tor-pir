@@ -80,10 +80,11 @@ int main(int argc, char **argv) {
 
             PIRServer server(io_context, enc_params, pir_params);
 
-            // TODO: Can I generate this on the server side? I think so, so let's do that!
-            PIRClient pir_client(enc_params, pir_params);
-            seal::GaloisKeys galois_keys = pir_client.generate_galois_keys();
-            server.set_galois_key(0, galois_keys);
+//            // TODO: Can I generate this on the server side? I think so, so let's do that!
+//            PIRClient pir_client(enc_params, pir_params);
+//            seal::GaloisKeys galois_keys = pir_client.generate_galois_keys();
+//
+//            server.set_galois_key(0, galois_keys);
 
             server.gen_database();
 

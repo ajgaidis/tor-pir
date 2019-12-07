@@ -40,6 +40,7 @@ private:
         void handle_write_echo(const boost::system::error_code&, size_t);
         void handle_read_plain(const boost::system::error_code&, size_t);
         void handle_write_plain(const boost::system::error_code&, size_t);
+        void handle_read_galkeys(const boost::system::error_code&, size_t);
         void handle_read_pir(const boost::system::error_code&, size_t);
         void handle_write_pir(const boost::system::error_code&, size_t);
     };
