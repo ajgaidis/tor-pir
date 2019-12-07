@@ -1,6 +1,5 @@
 #include "server_main.hpp"
 #include "pir.hpp"
-#include "pir_client.hpp"
 #include "plain_server.hpp"
 #include "seal/seal.h"
 #include "pir_server.hpp"
@@ -57,12 +56,6 @@ int main(int argc, char **argv) {
         std::cout << "[i] Port set to " << server_config.port << std::endl;
     }
 
-    // TODO: error catch the size and num items in the db
-
-    std::cout << "[i] Setting up database" << std::endl;
-    std::cout << "    [i] Database contains " << server_config.ele_num << " elements" << std::endl;
-    std::cout << "    [i] Database elements are " << server_config.ele_size << " bytes" << std::endl;
-
 
     /*
      * Running the server
@@ -72,6 +65,8 @@ int main(int argc, char **argv) {
         if (server_config.setup == PIR) {
 
             aio::io_context io_context;
+            // These parameters should match what the client sets up, we don't
+            // handle this in code, so it should be done out of band
             uint32_t N = 2048;
             uint32_t logt = 8;
             uint32_t d = 1;
@@ -80,21 +75,14 @@ int main(int argc, char **argv) {
 
             PIRServer server(io_context, enc_params, pir_params);
 
-//            // TODO: Can I generate this on the server side? I think so, so let's do that!
-//            PIRClient pir_client(enc_params, pir_params);
-//            seal::GaloisKeys galois_keys = pir_client.generate_galois_keys();
-//
-//            server.set_galois_key(0, galois_keys);
-
             server.gen_database();
 
             // run() will allow us to do things asynchronously
             io_context.run();
 
 
-        } else {  // plain server configuration
+        } else {  // Plain server configuration
 
-            // Server object will accept incoming client connections
             aio::io_context io_context;
             PlainServer server(io_context);
             server.gen_database();

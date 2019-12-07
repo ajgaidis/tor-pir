@@ -2,8 +2,6 @@
 #define TOR_PIR_TCP_SERVER_HPP
 
 #include "server_main.hpp"
-//#include "plain_server.hpp"
-//#include "pir_server.hpp"
 #include <variant>
 
 class PlainServer;

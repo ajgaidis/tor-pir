@@ -10,8 +10,6 @@
 #include <random>
 #include <memory>
 #include <chrono>
-//#include "seal/seal.h"
-//#include "pir_server.hpp"
 
 namespace aio = boost::asio;
 using boost::asio::ip::tcp;
@@ -32,7 +30,7 @@ extern std::string delimiter;
 
 #define DEFAULT_SETUP (Plain)
 #define DEFAULT_PORT (8080)
-#define DEFAULT_ELE_NUM (1 << 12)
+#define DEFAULT_ELE_NUM (4096)
 #define DEFAULT_ELE_SIZE (288)  // Measured in bytes
 
 #endif //TOR_PIR_SERVER_HPP

@@ -51,8 +51,7 @@ tcp::socket& TCPServer::TCPConnection::socket() {
 }
 
 void TCPServer::TCPConnection::start() {
-
-    static bool galkey_set = false;
+    static bool is_galkey_set = false;
 
     if (server_config.setup == Plain) {
         aio::async_read_until(socket_,
@@ -61,20 +60,21 @@ void TCPServer::TCPConnection::start() {
                                           shared_from_this(),
                                           aio::placeholders::error,
                                           aio::placeholders::bytes_transferred));
-    } else if (!galkey_set) {
-//    } else if (server_config.setup == PIR) {
+
+    } else if (server_config.setup == PIR && !is_galkey_set) {
         // We start with a galois key exchange handshake. Nothing fancy or secure, just direct
         // transmission to get the server synced to the client. After the `handle_read_galkeys`
         // handler is exited control is switched to the main alternation between
         // `handle_write_pir` and `handle_read_pir`.
-        galkey_set = true;
+        is_galkey_set = true;
         aio::async_read_until(socket_,
                               aio::dynamic_buffer(message_), delimiter,
                               boost::bind(&TCPConnection::handle_read_galkeys,
                                           shared_from_this(),
                                           aio::placeholders::error,
                                           aio::placeholders::bytes_transferred));
-    } else {
+
+    } else if (server_config.setup == PIR && is_galkey_set) {
         aio::async_read_until(socket_,
                               aio::dynamic_buffer(message_), delimiter,
                               boost::bind(&TCPConnection::handle_read_pir,
@@ -121,18 +121,10 @@ void TCPServer::TCPConnection::handle_read_plain(const boost::system::error_code
 
     // TODO: error check and guard the user input
 
-    // Cast the PlainServer now that we know its what we want
-    // TODO: double check this pointer madness
     auto pln_ptr = std::get_if<PlainServer*>(&server_);
 
     auto time_before = std::chrono::high_resolution_clock::now();
-    uint64_t query;
-    try { // TODO: still getting error here
-        query  = std::stoull(message_);
-    } catch (std::exception& err) {
-        std::cerr << "Yikes! Bad conversion from string to uint64_t." << std::endl;
-    }
-    PlainReply reply = (*pln_ptr)->generate_reply(query);
+    PlainReply reply = (*pln_ptr)->generate_reply(std::stoull(message_));
     auto time_after = std::chrono::high_resolution_clock::now();
     auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(time_after - time_before).count();
     std::cout << "Time to generate reply: " << time_difference << " micoseconds" << std::endl;
@@ -168,43 +160,26 @@ void TCPServer::TCPConnection::handle_write_plain(const boost::system::error_cod
 
 void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_code& err, size_t bytes_transferred) {
 
-    std::cout << "Inside Galkeys. Bytes transferred: " << bytes_transferred << std::endl;
-
-    std::cout << "Reading client's galois keys" << std::endl;
+    std::cout << "Reading in client's galois keys" << std::endl;
     auto pir_ptr = std::get_if<PIRServer*>(&server_);
-    std::cout << "Erasing delimiter" << std::endl;
+
+    // Erase the delimiter that lets us know the end of the transmission
     message_.erase(message_.length() - delimiter.size(), delimiter.size());
-    std::cout << "Deserializing galkeys" << std::endl;
+
+    // Deserialize the bytes read from the network
     seal::GaloisKeys* galkeys = deserialize_galoiskeys(message_);
-    std::cout << "Setting galkeys" << std::endl;
+
+    // Set the server's copy of the client's galois keys. Since there will only
+    // be one client for all the tests, we hardcode the 0
     (*pir_ptr)->set_galois_key(0, *galkeys);
 
-    std::cout << "Done." << std::endl;
-
+    // We use one buffer for all the communication with the client so we need
+    // to clear it so we can fill it up again
     message_.clear();
+
+    // Now that the keys are setup we can return to `start` and begin the
+    // actual PIR read/write cycle
     start();
-
-
-//    if (!err) {
-//        aio::async_write(socket_,
-//                         aio::buffer("[SERVER] Galois keys received successfully"),
-//                         boost::bind(&TCPConnection::handle_write_pir,
-//                                     shared_from_this(),
-//                                     aio::placeholders::error,
-//                                     aio::placeholders::bytes_transferred));
-//
-//        message_.clear();
-//
-//        aio::async_read_until(socket_,
-//                              aio::dynamic_buffer(message_), delimiter,
-//                              boost::bind(&TCPConnection::handle_write_pir,
-//                                          shared_from_this(),
-//                                          aio::placeholders::error,
-//                                          aio::placeholders::bytes_transferred));
-//        message_.clear();
-//    } else {
-//        delete this;
-//    }
 }
 
 void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& err, size_t bytes_transferred) {
@@ -212,23 +187,14 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
     if (bytes_transferred == 0) {
         exit(0);
     }
-    std::cout << bytes_transferred << std::endl;
 
-    std::cout << "-> Handling PIR read" << std::endl;
     auto pir_ptr = std::get_if<PIRServer*>(&server_);
     // Database dimensions are 1 and for now we only read 1 result
-    std::cout << "-> Cast server" << std::endl;
     message_.erase(message_.length() - delimiter.size(), delimiter.size());
-    std::cout << "-> Cleaned message" << std::endl;
-    std::cout << "-> Cleaned message size: " << message_.length() << std::endl;
 
-    PirQuery query = deserialize_query(1, 1, message_, CIPHER_SIZE); // TODO: check this! don't know if length of ctext == element size
-    std::cout << "-> Deserialized query" << std::endl;
-    PirReply reply = (*pir_ptr)->generate_reply(query, 0); // 0 is the client id (so we know how to index the galois key map)
-    std::cout << "-> Generated reply" << std::endl;
+    PirQuery query = deserialize_query(1, 1, message_, CIPHER_SIZE);
+    PirReply reply = (*pir_ptr)->generate_reply(query, 0);
     std::string serialized_reply = serialize_ciphertexts(reply);
-    std::cout << "-> Serialized reply" << std::endl;
-    std::cout << "-> Serialized reply length: " << serialized_reply.length() << std::endl;
 
     if (!err) {
         aio::async_write(socket_,
