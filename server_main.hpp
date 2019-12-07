@@ -32,5 +32,8 @@ extern std::string delimiter;
 #define DEFAULT_PORT (8080)
 #define DEFAULT_ELE_NUM (4096)
 #define DEFAULT_ELE_SIZE (288)  // Measured in bytes
+#define DEFAULT_N (2048)
+#define DEFAULT_LOGT (8)
+#define DEFAULT_D (1)
 
 #endif //TOR_PIR_SERVER_HPP

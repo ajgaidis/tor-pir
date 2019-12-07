@@ -9,6 +9,9 @@ namespace po = boost::program_options;
 ServerConfig server_config;
 PirParams pir_params;
 std::string delimiter = ":q!";
+uint32_t N;
+uint32_t logt;
+uint32_t d;
 
 
 int main(int argc, char **argv) {
@@ -24,12 +27,23 @@ int main(int argc, char **argv) {
                     "set number of items in the database")
             ("ele_size", po::value<uint64_t>(&server_config.ele_size)->default_value(DEFAULT_ELE_SIZE),
                     "set the size of the database elements")
+            ("N", po::value<uint32_t>(&N)->default_value(DEFAULT_N),
+             "...")
+            ("logt", po::value<uint32_t>(&logt)->default_value(DEFAULT_LOGT),
+             "...")
+            ("d", po::value<uint32_t>(&d)->default_value(DEFAULT_D),
+             "...")
     ;
 
+    // Allow positional arguments
     po::positional_options_description p;
-    p.add("port", 1); // second argument specifies the number of position arguments that will take this name
+    // second argument below specifies the number of position arguments that will take this name
+    p.add("port", 1);
     p.add("ele_num", 1);
     p.add("ele_size", 1);
+    p.add("N", 1);
+    p.add("logt", 1);
+    p.add("d", 1);
 
     // Populate a variables_map with the command line arguments (positional and flag-based)
     po::variables_map vm;
@@ -67,14 +81,10 @@ int main(int argc, char **argv) {
             aio::io_context io_context;
             // These parameters should match what the client sets up, we don't
             // handle this in code, so it should be done out of band
-            uint32_t N = 2048;
-            uint32_t logt = 8;
-            uint32_t d = 1;
             seal::EncryptionParameters enc_params(seal::scheme_type::BFV);
-            gen_params(server_config.ele_num, server_config.ele_size, N, logt, d, enc_params, pir_params);
-
+            gen_params(server_config.ele_num, server_config.ele_size,
+                    N, logt, d, enc_params, pir_params);
             PIRServer server(io_context, enc_params, pir_params);
-
             server.gen_database();
 
             // run() will allow us to do things asynchronously

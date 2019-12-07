@@ -86,8 +86,6 @@ void TCPServer::TCPConnection::start() {
 
 void TCPServer::TCPConnection::handle_read_echo(const boost::system::error_code& err, size_t) {
 
-    // TODO: error check and guard the user input
-
     if (!err) {
         aio::async_write(socket_,
                          aio::buffer(message_),
@@ -117,17 +115,19 @@ void TCPServer::TCPConnection::handle_write_echo(const boost::system::error_code
 
 }
 
-void TCPServer::TCPConnection::handle_read_plain(const boost::system::error_code& err, size_t) {
+void TCPServer::TCPConnection::handle_read_plain(const boost::system::error_code& err, size_t bytes_transferred) {
 
-    // TODO: error check and guard the user input
+    if (bytes_transferred == 0) {
+        exit(0);
+    }
 
     auto pln_ptr = std::get_if<PlainServer*>(&server_);
 
-    auto time_before = std::chrono::high_resolution_clock::now();
+    // auto time_before = std::chrono::high_resolution_clock::now();
     PlainReply reply = (*pln_ptr)->generate_reply(std::stoull(message_));
-    auto time_after = std::chrono::high_resolution_clock::now();
-    auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(time_after - time_before).count();
-    std::cout << "Time to generate reply: " << time_difference << " micoseconds" << std::endl;
+    // auto time_after = std::chrono::high_resolution_clock::now();
+    // auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(time_after - time_before).count();
+    // std::cout << "Time to generate reply: " << time_difference << " micoseconds" << std::endl;
 
     if (!err) {
         aio::async_write(socket_,
@@ -158,7 +158,7 @@ void TCPServer::TCPConnection::handle_write_plain(const boost::system::error_cod
 
 }
 
-void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_code& err, size_t bytes_transferred) {
+void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_code& err, size_t) {
 
     std::cout << "Reading in client's galois keys" << std::endl;
     auto pir_ptr = std::get_if<PIRServer*>(&server_);
