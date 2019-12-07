@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
                     time_after_pir - time_before_pir).count();
             std::cout << "[i] Server response time: " << time_difference_pir << " micoseconds" << std::endl;
             // std::cout << elems.data() << std::endl;
-            llog << time_difference_pir << std::endl;
+            llog << time_difference_pir << "," << std::flush;
         }
 
     } else {
@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
             auto time_difference_plain = std::chrono::duration_cast<std::chrono::microseconds>(
                     time_after_plain - time_before_plain).count();
             std::cout << "Server response time: " << time_difference_plain << " micoseconds" << std::endl;
-            llog << time_difference_plain << std::endl;
+            llog << time_difference_plain << "," << std::flush;
         }
     }
 
