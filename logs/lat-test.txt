@@ -1,0 +1,13 @@
+[+] Opening a file to write to...BOO!
+[SUCCESS]
+[+] Connecting to 3.14.27.183:8080...[SUCCESS]
+Server response time: 819807 micoseconds
+Server response time: 80 micoseconds
+Server response time: 129 micoseconds
+Server response time: 100 micoseconds
+Server response time: 26 micoseconds
+Server response time: 23 micoseconds
+Server response time: 15 micoseconds
+Server response time: 47 micoseconds
+Server response time: 12 micoseconds
+Server response time: 7 micoseconds

@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.10.2)
 project(tor_pir)
 
 # Use the Gnu C++ compiler
-set(CMAKE_CXX_COMPILER "/user/bin/g++")
-#set(CMAKE_CXX_COMPILER "/usr/local/bin/g++-9")
+#set(CMAKE_CXX_COMPILER "/user/bin/g++")
+set(CMAKE_CXX_COMPILER "/usr/local/bin/g++-9")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS -fvisibility=hidden)

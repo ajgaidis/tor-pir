@@ -125,6 +125,7 @@ void TCPServer::TCPConnection::handle_read_plain(const boost::system::error_code
 
     // auto time_before = std::chrono::high_resolution_clock::now();
     PlainReply reply = (*pln_ptr)->generate_reply(std::stoull(message_));
+    reply.push_back(':'); reply.push_back('q'); reply.push_back('!');
     // auto time_after = std::chrono::high_resolution_clock::now();
     // auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(time_after - time_before).count();
     // std::cout << "Time to generate reply: " << time_difference << " micoseconds" << std::endl;

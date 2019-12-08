@@ -34,11 +34,15 @@ uint32_t d;
 int main(int argc, char **argv) {
 
     std::cout << "[+] Opening a file to write to..." << std::flush;
-    std::string file = "../logs/latency-test ( ).txt";
-    time_t raw_time;
-    time(&raw_time);
-    file.insert(file.length() - 5, ctime(&raw_time));
-    ofstream llog(file);
+    std::string file = "../logs/lat-test.txt";
+//    time_t raw_time;
+//    time(&raw_time);
+//    file.insert(file.length() - 5, ctime(&raw_time));
+    fstream llog;
+    llog.open(file, fstream::out |  fstream::app);
+    if (!llog.is_open()) {
+        std::cout << "BOO!" << std::endl;
+    }
     std::cout << "[SUCCESS]" << std::endl;
 
     // Define the options the program can take
@@ -97,13 +101,13 @@ int main(int argc, char **argv) {
     aio::connect(socket, iterator);
     std::cout << "[SUCCESS]" << std::endl;
 
+    std::string delimiter = ":q!";   // Used for async_read_until() to detect end of transmission
+
     if (setup) {
 
         /*
          * PIR CLIENT
          */
-
-        std::string delimiter = ":q!";   // Used for async_read_until() to detect end of transmission
         std::random_device rd;
         seal::EncryptionParameters params(seal::scheme_type::BFV);
         PirParams pir_params;
@@ -135,7 +139,7 @@ int main(int argc, char **argv) {
         // uint64_t offset = client.get_fv_offset(ele_index, size_per_item); // offset in FV plaintext
 
         int i = 0;
-        while (i++ < 300) {
+        while (i++ < 10) {
                 // Timer to measure round-trip latency begins now
                 auto time_before_pir = std::chrono::high_resolution_clock::now();
 
@@ -182,16 +186,22 @@ int main(int argc, char **argv) {
          */
 
         int i = 0;
-        while (i++ < 300) {
+        while (i++ < 10) {
             // Timer to measure round-trip latency begins now
             auto time_before_plain = std::chrono::high_resolution_clock::now();
             // Send the query out to the server
             socket.write_some(aio::buffer("5\n", 3));
 
             // Read the reply from the server
-            boost::array<char, 300> plain_buf{};
-            boost::system::error_code plain_error;
-            socket.read_some(aio::buffer(plain_buf), plain_error);
+            std::string response;
+            std::size_t n = aio::read_until(socket, aio::dynamic_buffer(response), delimiter);
+            std::string reply_str = response.substr(0, n);
+            response.erase(0, n);
+            reply_str.erase(reply_str.length() - delimiter.size(), delimiter.size());
+
+//            boost::array<char, 300> plain_buf{};
+//            boost::system::error_code plain_error;
+//            socket.read_some(aio::buffer(plain_buf), plain_error);
 
             // At this point we have a human-readable response and we can stop the clock
             auto time_after_plain = std::chrono::high_resolution_clock::now();
