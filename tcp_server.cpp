@@ -195,6 +195,7 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
     PirQuery query = deserialize_query(1, 1, message_, CIPHER_SIZE);
     PirReply reply = (*pir_ptr)->generate_reply(query, 0);
     std::string serialized_reply = serialize_ciphertexts(reply);
+    serialized_reply.append(delimiter);
 
     if (!err) {
         aio::async_write(socket_,

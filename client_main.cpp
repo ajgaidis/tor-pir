@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
         std::cout << "[SUCCESS]" << std::endl;
 
         // The element to retreive and additional setup
-        uint64_t ele_index = 25;
+        uint64_t ele_index = 3;
         uint64_t index = client.get_fv_index(ele_index, size_per_item);   // index of FV plaintext
         // uint64_t offset = client.get_fv_offset(ele_index, size_per_item); // offset in FV plaintext
 
@@ -146,13 +146,20 @@ int main(int argc, char **argv) {
 
             // Write the query out to the server
             socket.write_some(aio::buffer(serialized_query, serialized_query.size()));
-
+            cout << "wrote bytes to socket" << endl;
             // Read the response to the query from the server
-            boost::array<char, 32841> pir_buf{};
-            aio::read(socket, aio::buffer(pir_buf, 32841));
-            std::string reply_str(pir_buf.begin(), pir_buf.end());
+            std::string response;
+            std::size_t n = aio::read_until(socket, aio::dynamic_buffer(response), delimiter);
+            std::string reply_str = response.substr(0, n);
+            response.erase(0, n);
+            reply_str.erase(reply_str.length() - delimiter.size(), delimiter.size());
+//            boost::array<char, 32841> pir_buf{};
+//            aio::read(socket, aio::buffer(pir_buf, 32841));
+//            cout << "read bytes in..." << endl;
+//            std::string reply_str(pir_buf.begin(), pir_buf.end());
 
             // Deserialize and decode the response from the server to get the answer
+            cout << "right before deserialize" << endl;
             PirReply reply = deserialize_ciphertexts(1, reply_str, CIPHER_SIZE);
             seal::Plaintext result = client.decode_reply(reply);
 

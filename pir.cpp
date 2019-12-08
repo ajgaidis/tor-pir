@@ -238,6 +238,8 @@ PirQuery deserialize_query(uint32_t d, uint32_t count, string s, uint32_t len_ci
               len_ciphertext)
         );
     }
+    std::cout << "outer size: " << c.size() << std::endl;
+    std::cout << "inner size: " << c[0].size() << std::endl;
     return c;
 }
 
