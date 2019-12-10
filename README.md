@@ -1,7 +1,7 @@
 # Tor-PIR-do
 Security, Latency, and Throughput of PIR and the Tor Network
 
-For more information about this project, please see our paper.
+For more information about this project, please see our paper (file: `tor_pir_writeup.pdf`).
 
 ## Compiling and Installing
 The following instructions got everything up-and-running nicely on our Amazon EC2 Ubuntu instance.
