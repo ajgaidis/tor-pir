@@ -6,7 +6,7 @@ For more information about this project, please see our paper.
 ## Compiling and Installing
 The following instructions got everything up-and-running nicely on our Amazon EC2 Ubuntu instance.
 
-###General
+### General
 
 First, install all the dependencies you can with a nice package manager.
 
@@ -17,7 +17,7 @@ sudo apt-get cmake build-essential g++ cmake python-dev autotools-dev libicu-dev
 
 Now begins the slog of installing dependencies from source. First up is SEAL.
 
-###SEAL  v3.2.0
+### SEAL  v3.2.0
 
 ```
 git clone --single-branch --branch 3.2.0 https://github.com/microsoft/SEAL.git
@@ -28,7 +28,7 @@ sudo make install
 cd ../..
 ```
 
-###Boost v1.71.0
+### Boost v1.71.0
 
 Note, that at the time of writing this, Boost v1.71.0 could not be installed with `apt-get` and could only be built from source.
 

@@ -5,7 +5,7 @@
  *
  * - Alex
  *
- * Edited by Alex to accommodate TCPServer base class and a an additional method (gen_database()).
+ * Edited by Alex to accommodate TCPServer base class and an additional method (gen_database()).
  */
 
 #include "pir_server.hpp"

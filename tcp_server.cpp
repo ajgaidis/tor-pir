@@ -42,7 +42,8 @@ TCPServer::TCPConnection::TCPConnection(aio::io_context &io_context, std::varian
     socket_(io_context),
     server_(server) {}
 
-TCPServer::TCPConnection::pointer TCPServer::TCPConnection::create(aio::io_context& io_context, std::variant<PlainServer*, PIRServer*> server) {
+TCPServer::TCPConnection::pointer TCPServer::TCPConnection::create(
+        aio::io_context& io_context, std::variant<PlainServer*, PIRServer*> server) {
     return pointer(new TCPConnection(io_context, server));
 }
 
@@ -201,8 +202,7 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
     auto time_before = std::chrono::high_resolution_clock::now();
     PirReply reply = (*pir_ptr)->generate_reply(query, 0);
     auto time_after = std::chrono::high_resolution_clock::now();
-    auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(
-            time_before - time_after).count();
+    auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(time_after - time_before).count();
     std::cout << "Reply generation time: " << time_difference << " microseconds" << std::endl;
 
     std::string serialized_reply = serialize_ciphertexts(reply);

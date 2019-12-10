@@ -25,27 +25,25 @@ namespace po = boost::program_options;
 
 std::string host;
 std::string port;
-uint64_t number_of_items;  // In the database
-uint64_t size_per_item;    // Measured in bytes
-uint32_t N;
-uint32_t logt;
-uint32_t d;
+uint64_t number_of_items;  // in the database
+uint64_t size_per_item;    // measured in bytes
+uint32_t N;                // polynomial degree of the ring
+uint32_t logt;             // expansion factor (security parameter)
+uint32_t d;                // dimension of the database
+
 
 int main(int argc, char **argv) {
 
-    std::cout << "[+] Opening a file to write to..." << std::flush;
-    std::string file = "/Users/agaidis/Desktop/tor-pir/logs/1-hop-latency.txt";
-    ofstream llog;
-//    time_t raw_time;
-//    time(&raw_time);
-//    file.insert(file.length() - 5, ctime(&raw_time));
-    llog.open(file, fstream::out | fstream::app);
-    if (!llog.is_open()) {
-        std::cout << "[FAILURE]" << std::endl;
-    } else {
-        std::cout << "[SUCCESS]" << std::endl;
-    }
-
+    // Use this to write timing data out to a log file specified by the path
+//    std::cout << "[+] Opening a file to write to..." << std::flush;
+//    std::string file = "/Users/agaidis/Desktop/tor-pir/logs/1-hop-latency.txt";
+//    ofstream llog;
+//    llog.open(file, fstream::out | fstream::app);
+//    if (!llog.is_open()) {
+//        std::cout << "[FAILURE]" << std::endl;
+//    } else {
+//        std::cout << "[SUCCESS]" << std::endl;
+//    }
 
     // Define the options the program can take
     po::options_description desc("Options");
@@ -61,11 +59,11 @@ int main(int argc, char **argv) {
             ("ele_size", po::value<uint64_t>(&size_per_item)->default_value(DEFAULT_ELE_SIZE),
              "set the size of the database elements")
             ("N", po::value<uint32_t>(&N)->default_value(DEFAULT_N),
-             "...")
+             "(PIR ONLY) set the polynomial degree of the ring")
             ("logt", po::value<uint32_t>(&logt)->default_value(DEFAULT_LOGT),
-             "...")
+             "(PIR ONLY) set the security parameter")
             ("d", po::value<uint32_t>(&d)->default_value(DEFAULT_D),
-             "...")
+             "(PIR ONLY) set the dimensions of the database")
             ;
 
     // Allow positional arguments
@@ -86,11 +84,13 @@ int main(int argc, char **argv) {
             options(desc).positional(p).run(), vm);
     po::notify(vm);
 
+    // Display the help menu
     if (vm.count("help")) {
         std::cout << "Usage:\n\t./client [options]\n" << desc << std::endl;
         return 1;
     }
 
+    // Connect to a host on a given port
     std::cout << "[+] Connecting to " << host << ":" << port << "..." << std::flush;
     aio::io_context io_context;
     tcp::resolver resolver(io_context);
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     std::cout << "[SUCCESS]" << std::endl;
 
     std::string delimiter = ":q!";   // Used for async_read_until() to detect end of transmission
-    std::random_device rd;
+    std::random_device rd;           // Used to randomly select an element of the database to query
 
     if (vm.count("pir")) {
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
         std::cout << "[SUCCESS]" << std::endl;
 
         int j = 0;
-        while (j++ < 10) {
+        while (j++ < 10) {  // We loop to take the average over multiple requests
 
             // The element to retreive and additional setup
             uint64_t ele_index = rd() % number_of_items;
@@ -158,9 +158,6 @@ int main(int argc, char **argv) {
             response.erase(0, n);
 
             reply_str.erase(reply_str.length() - delimiter.size(), delimiter.size());
-//            boost::array<char, 32841> pir_buf{};
-//            aio::read(socket, aio::buffer(pir_buf, 32841));
-//            std::string reply_str(pir_buf.begin(), pir_buf.end());
 
             // Deserialize and decode the response from the server to get the answer
             PirReply reply = deserialize_ciphertexts(1, reply_str, CIPHER_SIZE);
@@ -175,7 +172,7 @@ int main(int argc, char **argv) {
                     time_after_pir - time_before_pir).count();
             std::cout << "[i] Server response time: " << time_difference_pir << " microseconds" << std::endl;
             // std::cout << elems.data() << std::endl;
-            llog << time_difference_pir << "," << std::flush;
+//            llog << time_difference_pir << "," << std::flush;
         }
 
     } else {
@@ -186,7 +183,7 @@ int main(int argc, char **argv) {
 
         uint64_t time_aggregate = 0;
         int i = 0;
-        while (i++ < 100) {
+        while (i++ < 100) {    // We loop to take the average over multiple requests
 
             // Generate a query
             uint64_t ele_index = rd() % number_of_items;
@@ -205,22 +202,18 @@ int main(int argc, char **argv) {
             response.erase(0, n);
             reply_str.erase(reply_str.length() - delimiter.size(), delimiter.size());
 
-//            boost::array<char, 300> plain_buf{};
-//            boost::system::error_code plain_error;
-//            socket.read_some(aio::buffer(plain_buf), plain_error);
-
             // At this point we have a human-readable response and we can stop the clock
             auto time_after_plain = std::chrono::high_resolution_clock::now();
             auto time_difference_plain = std::chrono::duration_cast<std::chrono::microseconds>(
                     time_after_plain - time_before_plain).count();
             std::cout << "Server response time: " << time_difference_plain << " microseconds" << std::endl;
             // llog << time_difference_plain << "," << std::flush;
-            if (i != 1)
+            if (i != 1) // TODO: find out why this first query time is such an outlier
                 time_aggregate += time_difference_plain;
         }
-        llog << time_aggregate / 100 << "," << std::flush;
+//        llog << time_aggregate / 100 << "," << std::flush;
     }
 
-    llog.close();
+//    llog.close();
     return 0;
 }
