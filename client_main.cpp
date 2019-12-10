@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include <string>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
@@ -22,7 +23,6 @@ namespace po = boost::program_options;
 #define DEFAULT_LOGT (8)
 #define DEFAULT_D (1)
 
-uint8_t setup;
 std::string host;
 std::string port;
 uint64_t number_of_items;  // In the database
@@ -34,16 +34,18 @@ uint32_t d;
 int main(int argc, char **argv) {
 
     std::cout << "[+] Opening a file to write to..." << std::flush;
-    std::string file = "../logs/lat-test.txt";
+    std::string file = "/Users/agaidis/Desktop/tor-pir/logs/1-hop-latency.txt";
+    ofstream llog;
 //    time_t raw_time;
 //    time(&raw_time);
 //    file.insert(file.length() - 5, ctime(&raw_time));
-    fstream llog;
-    llog.open(file, fstream::out |  fstream::app);
+    llog.open(file, fstream::out | fstream::app);
     if (!llog.is_open()) {
-        std::cout << "BOO!" << std::endl;
+        std::cout << "[FAILURE]" << std::endl;
+    } else {
+        std::cout << "[SUCCESS]" << std::endl;
     }
-    std::cout << "[SUCCESS]" << std::endl;
+
 
     // Define the options the program can take
     po::options_description desc("Options");
@@ -89,8 +91,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    setup = (vm.count("pir")) ? 1 : 0;
-
     std::cout << "[+] Connecting to " << host << ":" << port << "..." << std::flush;
     aio::io_context io_context;
     tcp::resolver resolver(io_context);
@@ -102,13 +102,13 @@ int main(int argc, char **argv) {
     std::cout << "[SUCCESS]" << std::endl;
 
     std::string delimiter = ":q!";   // Used for async_read_until() to detect end of transmission
+    std::random_device rd;
 
-    if (setup) {
+    if (vm.count("pir")) {
 
         /*
          * PIR CLIENT
          */
-        std::random_device rd;
         seal::EncryptionParameters params(seal::scheme_type::BFV);
         PirParams pir_params;
 
@@ -133,15 +133,16 @@ int main(int argc, char **argv) {
         sleep(3);
         std::cout << "[SUCCESS]" << std::endl;
 
-        // The element to retreive and additional setup
-        uint64_t ele_index = 3;
-        uint64_t index = client.get_fv_index(ele_index, size_per_item);   // index of FV plaintext
-        // uint64_t offset = client.get_fv_offset(ele_index, size_per_item); // offset in FV plaintext
+        int j = 0;
+        while (j++ < 10) {
 
-        int i = 0;
-        while (i++ < 10) {
-                // Timer to measure round-trip latency begins now
-                auto time_before_pir = std::chrono::high_resolution_clock::now();
+            // The element to retreive and additional setup
+            uint64_t ele_index = rd() % number_of_items;
+            uint64_t index = client.get_fv_index(ele_index, size_per_item);
+            // uint64_t offset = client.get_fv_offset(ele_index, size_per_item);
+
+            // Timer to measure round-trip latency begins now
+            auto time_before_pir = std::chrono::high_resolution_clock::now();
 
             // Generate the query from the element index
             PirQuery q = client.generate_query(index);
@@ -150,20 +151,18 @@ int main(int argc, char **argv) {
 
             // Write the query out to the server
             socket.write_some(aio::buffer(serialized_query, serialized_query.size()));
-            cout << "wrote bytes to socket" << endl;
             // Read the response to the query from the server
             std::string response;
             std::size_t n = aio::read_until(socket, aio::dynamic_buffer(response), delimiter);
             std::string reply_str = response.substr(0, n);
             response.erase(0, n);
+
             reply_str.erase(reply_str.length() - delimiter.size(), delimiter.size());
 //            boost::array<char, 32841> pir_buf{};
 //            aio::read(socket, aio::buffer(pir_buf, 32841));
-//            cout << "read bytes in..." << endl;
 //            std::string reply_str(pir_buf.begin(), pir_buf.end());
 
             // Deserialize and decode the response from the server to get the answer
-            cout << "right before deserialize" << endl;
             PirReply reply = deserialize_ciphertexts(1, reply_str, CIPHER_SIZE);
             seal::Plaintext result = client.decode_reply(reply);
 
@@ -174,7 +173,7 @@ int main(int argc, char **argv) {
             auto time_after_pir = std::chrono::high_resolution_clock::now();
             auto time_difference_pir = std::chrono::duration_cast<std::chrono::microseconds>(
                     time_after_pir - time_before_pir).count();
-            std::cout << "[i] Server response time: " << time_difference_pir << " micoseconds" << std::endl;
+            std::cout << "[i] Server response time: " << time_difference_pir << " microseconds" << std::endl;
             // std::cout << elems.data() << std::endl;
             llog << time_difference_pir << "," << std::flush;
         }
@@ -185,12 +184,19 @@ int main(int argc, char **argv) {
          * PLAIN CLIENT
          */
 
+        uint64_t time_aggregate = 0;
         int i = 0;
-        while (i++ < 10) {
+        while (i++ < 100) {
+
+            // Generate a query
+            uint64_t ele_index = rd() % number_of_items;
+            std::string q = std::to_string(ele_index);
+            q.append("\n");
+
             // Timer to measure round-trip latency begins now
             auto time_before_plain = std::chrono::high_resolution_clock::now();
             // Send the query out to the server
-            socket.write_some(aio::buffer("5\n", 3));
+            socket.write_some(aio::buffer(q, q.size() + 1));
 
             // Read the reply from the server
             std::string response;
@@ -207,9 +213,12 @@ int main(int argc, char **argv) {
             auto time_after_plain = std::chrono::high_resolution_clock::now();
             auto time_difference_plain = std::chrono::duration_cast<std::chrono::microseconds>(
                     time_after_plain - time_before_plain).count();
-            std::cout << "Server response time: " << time_difference_plain << " micoseconds" << std::endl;
-            llog << time_difference_plain << "," << std::flush;
+            std::cout << "Server response time: " << time_difference_plain << " microseconds" << std::endl;
+            // llog << time_difference_plain << "," << std::flush;
+            if (i != 1)
+                time_aggregate += time_difference_plain;
         }
+        llog << time_aggregate / 100 << "," << std::flush;
     }
 
     llog.close();

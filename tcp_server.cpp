@@ -161,13 +161,14 @@ void TCPServer::TCPConnection::handle_write_plain(const boost::system::error_cod
 
 void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_code& err, size_t) {
 
-    std::cout << "Reading in client's galois keys" << std::endl;
+    std::cout << "Reading client's galois keys" << std::endl;
     auto pir_ptr = std::get_if<PIRServer*>(&server_);
 
     // Erase the delimiter that lets us know the end of the transmission
     message_.erase(message_.length() - delimiter.size(), delimiter.size());
 
     // Deserialize the bytes read from the network
+
     seal::GaloisKeys* galkeys = deserialize_galoiskeys(message_);
 
     // Set the server's copy of the client's galois keys. Since there will only
@@ -177,6 +178,8 @@ void TCPServer::TCPConnection::handle_read_galkeys(const boost::system::error_co
     // We use one buffer for all the communication with the client so we need
     // to clear it so we can fill it up again
     message_.clear();
+
+    std::cout << "Done reading client's galois keys" << std::endl;
 
     // Now that the keys are setup we can return to `start` and begin the
     // actual PIR read/write cycle
@@ -194,7 +197,14 @@ void TCPServer::TCPConnection::handle_read_pir(const boost::system::error_code& 
     message_.erase(message_.length() - delimiter.size(), delimiter.size());
 
     PirQuery query = deserialize_query(1, 1, message_, CIPHER_SIZE);
+
+    auto time_before = std::chrono::high_resolution_clock::now();
     PirReply reply = (*pir_ptr)->generate_reply(query, 0);
+    auto time_after = std::chrono::high_resolution_clock::now();
+    auto time_difference = std::chrono::duration_cast<std::chrono::microseconds>(
+            time_before - time_after).count();
+    std::cout << "Reply generation time: " << time_difference << " microseconds" << std::endl;
+
     std::string serialized_reply = serialize_ciphertexts(reply);
     serialized_reply.append(delimiter);
 
